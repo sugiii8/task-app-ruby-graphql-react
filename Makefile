@@ -4,7 +4,7 @@ setup:
 	docker-compose run --rm app bin/setup
 
 curdir := $(shell pwd)
-app_name := $(shell basename ${curdir}-app-1)
+app_name := $(shell basename ${curdir}_app_1)
 
 .PHONY: up
 up:
