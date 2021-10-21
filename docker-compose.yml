@@ -1,0 +1,78 @@
+version: '3'
+
+services:
+  app: &app
+    build: .
+    command:
+      [
+        '/bin/sh',
+        '-c',
+        "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'",
+      ]
+    ports:
+      - 3000:3000
+    volumes:
+      - .:/usr/src/app:delegated
+    depends_on:
+      - db
+      - webpacker
+      - redis
+    stdin_open: true
+    tty: true
+    environment:
+      - LANG=C.UTF-8
+      - BUNDLE_PATH=vendor/bundle
+      - WEBPACKER_DEV_SERVER_HOST=webpacker
+      - WEBPACKER_DEV_SERVER_PUBLIC=webpacker:3035
+      - FIXTURE_PATH=db/fixtures/dev
+    env_file: ./.env
+    working_dir: /usr/src/app
+  db:
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - db:/var/lib/postgresql/data:delegated
+    ports:
+      - 5432:5432
+  data:
+    image: busybox
+    volumes:
+      - db:/var/lib/postgresql/data:delegated
+  generator:
+    <<: *app
+    ports: []
+    command: ['sh', '-c', 'yarn generate --watch "app/javascript/graphql/**"']
+    depends_on:
+      - app
+  webpacker:
+    <<: *app
+    ports:
+      - 3035:3035
+    command:
+      ['sh', '-c', 'rm -rf public/packs/* || true && bin/webpack-dev-server']
+    depends_on: []
+    environment:
+      LANG: C.UTF-8
+      BUNDLE_PATH: vendor/bundle
+      WEBPACKER_DEV_SERVER_HOST: 0.0.0.0
+      WEBPACKER_DEV_SERVER_PUBLIC: 0.0.0.0:3035
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
+  test:
+    <<: *app
+    container_name: test
+    command: echo 'test!'
+    depends_on:
+      - db
+    environment:
+      - LANG=C.UTF-8
+      - BUNDLE_PATH=vendor/bundle
+    ports: []
+
+volumes:
+  db:
+    driver: local
